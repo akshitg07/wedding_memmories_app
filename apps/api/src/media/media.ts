@@ -1,6 +1,6 @@
 import multer from 'multer';
 import path from 'node:path';
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { prisma } from '../common/prisma.js';
 import { HttpError } from '../common/errors.js';
@@ -16,6 +16,7 @@ export const upload = multer({
   limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024 },
   fileFilter: (_req, file, cb) => allowed.includes(file.mimetype) ? cb(null, true) : cb(new HttpError(400, 'Unsupported file type')),
 });
+const uploadFiles = upload.array('files', 50) as unknown as RequestHandler;
 
 export const mediaRouter = Router();
 mediaRouter.use(requireAuth);
@@ -48,7 +49,7 @@ mediaRouter.get('/', async (req, res) => {
   res.json({ items: items.map(serializeMedia) });
 });
 
-mediaRouter.post('/', upload.array('files', 50), async (req, res) => {
+mediaRouter.post('/', uploadFiles, async (req, res) => {
   const files = req.files as Express.Multer.File[];
   const created = [];
   for (const file of files) {
