@@ -1,30 +1,17 @@
 # Wedding Memories
 
-A production-oriented wedding photo and video gallery inspired by Immich, Apple Photos, Google Photos, Pinterest, Linear, and Arc. It includes a Next.js frontend, Express/TypeScript API, PostgreSQL/Prisma persistence, JWT authentication, local storage abstraction, admin analytics, uploads, likes, comments, albums, Docker Compose, tests, and API documentation.
+A container-first wedding photo and video gallery inspired by Immich, Apple Photos, Google Photos, Pinterest, Linear, and Arc. It includes a Next.js frontend, Express/TypeScript API, PostgreSQL/Prisma persistence, JWT authentication, local storage abstraction, admin analytics, uploads, likes, comments, albums, Docker Compose, tests, and API documentation.
 
-## Quick start
+## Run the app with Docker Compose
+
+You only need Docker Compose on the host. The app, database, migrations, seed, API, frontend, and reverse proxy all run in containers.
 
 ```bash
 cp .env.example .env
-npm install
-npx prisma generate --schema apps/api/prisma/schema.prisma
-npx prisma db push --schema apps/api/prisma/schema.prisma
-npm --workspace apps/api run dev
-npm --workspace apps/web run dev
+docker compose up --build -d
 ```
 
-Seed the first admin:
-
-```bash
-ADMIN_USERNAME=admin ADMIN_PASSWORD='ChangeMe123!' tsx apps/api/src/seed.ts
-```
-
-## Docker production stack
-
-```bash
-docker compose up --build
-```
-
+Open `http://localhost` and sign in with the admin credentials from `.env`.
 
 ## Container with `/mnt` media share
 
@@ -91,9 +78,9 @@ Services:
 
 `StorageProvider` currently uses local disk under `STORAGE_DIR`, which defaults to `/mnt/wedding-memories` in containers. The interface is intentionally small (`save`, `read`, `delete`, `resolve`, `importExisting`) so S3, Cloudflare R2, MinIO, or NAS adapters can be dropped in without changing media controllers.
 
-## Tests
+## Container checks
 
 ```bash
-npm --workspaces run test
-npm --workspaces run lint
+docker compose config
+docker compose -f docker-compose.mnt.yml config
 ```
