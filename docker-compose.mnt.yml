@@ -23,12 +23,14 @@ services:
       DATABASE_URL: postgresql://wedding:${POSTGRES_PASSWORD:-wedding}@postgres:5432/wedding
       JWT_SECRET: ${JWT_SECRET:-change-me-with-32-characters-minimum}
       REFRESH_SECRET: ${REFRESH_SECRET:-change-me-too-with-32-characters-min}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3103,http://127.0.0.1:3103}
       STORAGE_DIR: /mnt/wedding-memories
       MEDIA_LIBRARY_DIR: /mnt/wedding-memories/library
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-1024}
+      SERVER_IP: ${SERVER_IP:-}
+      PUBLIC_PORT: ${PUBLIC_PORT:-3103}
     volumes:
       - /mnt:/mnt
     depends_on:
@@ -45,14 +47,14 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
     depends_on:
       - api
 
   nginx:
     image: nginx:1.27-alpine
     ports:
-      - "${HTTP_PORT:-80}:80"
+      - "${HTTP_PORT:-3103}:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

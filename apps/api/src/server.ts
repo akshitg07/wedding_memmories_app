@@ -13,10 +13,20 @@ import { prisma } from './common/prisma.js';
 
 const require = createRequire(import.meta.url);
 const pinoHttp = require('pino-http') as () => RequestHandler;
+const configuredOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
+if (env.SERVER_IP) {
+  configuredOrigins.push(`http://${env.SERVER_IP}:${env.PUBLIC_PORT}`);
+}
 
 export const app = express();
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || configuredOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 app.use(rateLimit({ windowMs: 60_000, limit: 120 }));

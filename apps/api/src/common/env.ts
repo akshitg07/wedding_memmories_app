@@ -1,2 +1,14 @@
 import { z } from 'zod';
-export const env = z.object({ DATABASE_URL:z.string(), JWT_SECRET:z.string().min(32), REFRESH_SECRET:z.string().min(32), CORS_ORIGIN:z.string().default('http://localhost:3000'), PORT:z.coerce.number().default(4000), STORAGE_DIR:z.string().default('/mnt/wedding-memories'), MEDIA_LIBRARY_DIR:z.string().default('/mnt/wedding-memories/library'), MAX_UPLOAD_MB:z.coerce.number().default(512) }).parse(process.env);
+
+export const env = z.object({
+  DATABASE_URL: z.string(),
+  JWT_SECRET: z.string().min(32),
+  REFRESH_SECRET: z.string().min(32),
+  CORS_ORIGIN: z.string().default('http://localhost:3103,http://127.0.0.1:3103'),
+  SERVER_IP: z.string().optional(),
+  PUBLIC_PORT: z.coerce.number().default(3103),
+  PORT: z.coerce.number().default(4000),
+  STORAGE_DIR: z.string().default('/mnt/wedding-memories'),
+  MEDIA_LIBRARY_DIR: z.string().default('/mnt/wedding-memories/library'),
+  MAX_UPLOAD_MB: z.coerce.number().default(512),
+}).parse(process.env);

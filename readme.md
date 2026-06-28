@@ -11,7 +11,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Open `http://localhost` and sign in with the admin credentials from `.env`.
+Open `http://localhost:3103` or `http://<server-ip>:3103` and sign in with the admin credentials from `.env`. If you want direct API CORS for a specific server IP, set `SERVER_IP=<server-ip>` in `.env`.
 
 ## Container with `/mnt` media share
 
@@ -33,7 +33,7 @@ Services:
 - `web`: Next.js responsive UI.
 - `api`: Express API with security middleware, rate limiting, validation, and centralized errors.
 - `postgres`: durable PostgreSQL database.
-- `nginx`: reverse proxy for `/` and `/api`.
+- `nginx`: reverse proxy for `/` and `/api`, published on host port `3103` by default.
 - volumes: `postgres_data`; media files are bind-mounted from host `/mnt`.
 
 ## API documentation
