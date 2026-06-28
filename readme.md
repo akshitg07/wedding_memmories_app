@@ -25,12 +25,29 @@ ADMIN_USERNAME=admin ADMIN_PASSWORD='ChangeMe123!' tsx apps/api/src/seed.ts
 docker compose up --build
 ```
 
+
+## Container with `/mnt` media share
+
+This repository includes a compose stack designed for a host-mounted media share. Create the host folders, copy or expose your Samba share there, and start the stack:
+
+```bash
+sudo mkdir -p /mnt/wedding-memories/library
+sudo chown -R 1000:1000 /mnt/wedding-memories || true
+docker compose -f docker-compose.mnt.yml up --build -d
+```
+
+- The API container mounts the host `/mnt` at container `/mnt`.
+- Uploaded files are stored under `/mnt/wedding-memories/uploads`.
+- Photos and videos you add manually or through Samba should go under `/mnt/wedding-memories/library`.
+- After adding files to the share, sign in as an admin and call `POST /api/admin/import-library` to index new JPEG, PNG, WebP, HEIC, MP4, MOV, AVI, MKV, and WebM files without copying them.
+- The API entrypoint runs Prisma generation, applies migrations, seeds the admin account, and then starts the server.
+
 Services:
 - `web`: Next.js responsive UI.
 - `api`: Express API with security middleware, rate limiting, validation, and centralized errors.
 - `postgres`: durable PostgreSQL database.
 - `nginx`: reverse proxy for `/` and `/api`.
-- volumes: `postgres_data`, `uploads`.
+- volumes: `postgres_data`; media files are bind-mounted from host `/mnt`.
 
 ## API documentation
 
@@ -53,6 +70,7 @@ Services:
 - `POST /admin/users` creates users.
 - `PATCH /admin/users/:id` disables users, changes display names, or resets passwords.
 - `DELETE /admin/media/:id` moderates and removes uploads.
+- `POST /admin/import-library` scans the mounted `MEDIA_LIBRARY_DIR` and imports files already placed on `/mnt` or a Samba share.
 
 ## Architecture
 
@@ -71,7 +89,7 @@ Services:
 
 ## Storage adapters
 
-`StorageProvider` currently uses local disk. The interface is intentionally small (`save`, `read`, `delete`) so S3, Cloudflare R2, MinIO, or NAS adapters can be dropped in without changing media controllers.
+`StorageProvider` currently uses local disk under `STORAGE_DIR`, which defaults to `/mnt/wedding-memories` in containers. The interface is intentionally small (`save`, `read`, `delete`, `resolve`, `importExisting`) so S3, Cloudflare R2, MinIO, or NAS adapters can be dropped in without changing media controllers.
 
 ## Tests
 

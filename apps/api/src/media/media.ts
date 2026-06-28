@@ -1,9 +1,92 @@
-import multer from 'multer'; import path from 'node:path'; import { Router } from 'express'; import { z } from 'zod'; import { prisma } from '../common/prisma.js'; import { HttpError } from '../common/errors.js'; import { env } from '../common/env.js'; import { storage } from '../storage/local.js'; import { requireAuth } from '../auth/auth.js';
-const allowed=['image/jpeg','image/png','image/webp','image/heic','video/mp4','video/quicktime','video/x-msvideo','video/x-matroska','video/webm'];
-export const upload = multer({ storage:multer.memoryStorage(), limits:{ fileSize: env.MAX_UPLOAD_MB*1024*1024 }, fileFilter:(_req,file,cb)=> allowed.includes(file.mimetype) ? cb(null,true) : cb(new HttpError(400,'Unsupported file type')) });
-export const mediaRouter=Router(); mediaRouter.use(requireAuth);
-mediaRouter.get('/', async (req,res)=>{ const q=z.object({search:z.string().optional(),type:z.enum(['IMAGE','VIDEO']).optional(),albumId:z.string().optional(),skip:z.coerce.number().default(0),take:z.coerce.number().max(100).default(40)}).parse(req.query); const where:any={status:'READY'}; if(q.type) where.type=q.type; if(q.albumId) where.albumId=q.albumId; if(q.search) where.OR=[{originalName:{contains:q.search,mode:'insensitive'}},{uploader:{displayName:{contains:q.search,mode:'insensitive'}}},{comments:{some:{body:{contains:q.search,mode:'insensitive'}}}]; const items=await prisma.media.findMany({where,skip:q.skip,take:q.take,orderBy:{createdAt:'desc'},include:{uploader:{select:{displayName:true,avatarUrl:true}},_count:{select:{likes:true,comments:true}}}}); res.json({items}); });
-mediaRouter.post('/', upload.array('files',50), async (req,res)=>{ const files=req.files as Express.Multer.File[]; const created=[]; for(const file of files){ const ext=path.extname(file.originalname).toLowerCase(); const saved=await storage.save(file.buffer,ext); const item=await prisma.media.upsert({where:{checksum:saved.checksum},update:{},create:{filename:saved.key,originalName:file.originalname,mimeType:file.mimetype,type:file.mimetype.startsWith('image/')?'IMAGE':'VIDEO',size:BigInt(file.size),checksum:saved.checksum,storageKey:saved.key,status:'READY',uploaderId:req.user!.id}}); created.push(item); } res.status(201).json({items:created}); });
-mediaRouter.get('/:id/download', async (req,res)=>{ const item=await prisma.media.findUnique({where:{id:req.params.id}}); if(!item) throw new HttpError(404,'Not found'); await prisma.media.update({where:{id:item.id},data:{downloads:{increment:1}}}); res.download(path.join(env.STORAGE_DIR,item.storageKey), item.originalName); });
-mediaRouter.post('/:id/like', async (req,res)=>{ await prisma.like.upsert({where:{userId_mediaId:{userId:req.user!.id,mediaId:req.params.id}},update:{},create:{userId:req.user!.id,mediaId:req.params.id}}); res.status(204).end(); });
-mediaRouter.post('/:id/comments', async (req,res)=>{ const body=z.object({body:z.string().min(1).max(1000)}).parse(req.body); res.status(201).json(await prisma.comment.create({data:{body:body.body,userId:req.user!.id,mediaId:req.params.id}})); });
+import multer from 'multer';
+import path from 'node:path';
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../common/prisma.js';
+import { HttpError } from '../common/errors.js';
+import { env } from '../common/env.js';
+import { storage } from '../storage/local.js';
+import { requireAuth } from '../auth/auth.js';
+
+const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm'];
+const serializeMedia = <T extends { size: bigint }>(item: T) => ({ ...item, size: item.size.toString() });
+
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => allowed.includes(file.mimetype) ? cb(null, true) : cb(new HttpError(400, 'Unsupported file type')),
+});
+
+export const mediaRouter = Router();
+mediaRouter.use(requireAuth);
+
+mediaRouter.get('/', async (req, res) => {
+  const q = z.object({
+    search: z.string().optional(),
+    type: z.enum(['IMAGE', 'VIDEO']).optional(),
+    albumId: z.string().optional(),
+    skip: z.coerce.number().default(0),
+    take: z.coerce.number().max(100).default(40),
+  }).parse(req.query);
+  const where: Record<string, unknown> = { status: 'READY' };
+  if (q.type) where.type = q.type;
+  if (q.albumId) where.albumId = q.albumId;
+  if (q.search) {
+    where.OR = [
+      { originalName: { contains: q.search, mode: 'insensitive' } },
+      { uploader: { displayName: { contains: q.search, mode: 'insensitive' } } },
+      { comments: { some: { body: { contains: q.search, mode: 'insensitive' } } } },
+    ];
+  }
+  const items = await prisma.media.findMany({
+    where,
+    skip: q.skip,
+    take: q.take,
+    orderBy: { createdAt: 'desc' },
+    include: { uploader: { select: { displayName: true, avatarUrl: true } }, _count: { select: { likes: true, comments: true } } },
+  });
+  res.json({ items: items.map(serializeMedia) });
+});
+
+mediaRouter.post('/', upload.array('files', 50), async (req, res) => {
+  const files = req.files as Express.Multer.File[];
+  const created = [];
+  for (const file of files) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const saved = await storage.save(file.buffer, ext);
+    const item = await prisma.media.upsert({
+      where: { checksum: saved.checksum },
+      update: {},
+      create: {
+        filename: saved.key,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        type: file.mimetype.startsWith('image/') ? 'IMAGE' : 'VIDEO',
+        size: BigInt(file.size),
+        checksum: saved.checksum,
+        storageKey: saved.key,
+        status: 'READY',
+        uploaderId: req.user!.id,
+      },
+    });
+    created.push(serializeMedia(item));
+  }
+  res.status(201).json({ items: created });
+});
+
+mediaRouter.get('/:id/download', async (req, res) => {
+  const item = await prisma.media.findUnique({ where: { id: req.params.id } });
+  if (!item) throw new HttpError(404, 'Not found');
+  await prisma.media.update({ where: { id: item.id }, data: { downloads: { increment: 1 } } });
+  res.download(storage.resolve(item.storageKey), item.originalName);
+});
+
+mediaRouter.post('/:id/like', async (req, res) => {
+  await prisma.like.upsert({ where: { userId_mediaId: { userId: req.user!.id, mediaId: req.params.id } }, update: {}, create: { userId: req.user!.id, mediaId: req.params.id } });
+  res.status(204).end();
+});
+
+mediaRouter.post('/:id/comments', async (req, res) => {
+  const body = z.object({ body: z.string().min(1).max(1000) }).parse(req.body);
+  res.status(201).json(await prisma.comment.create({ data: { body: body.body, userId: req.user!.id, mediaId: req.params.id } }));
+});

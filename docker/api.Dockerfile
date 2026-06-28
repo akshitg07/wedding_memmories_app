@@ -11,5 +11,7 @@ WORKDIR /app
 ENV NODE_ENV=production PORT=4000
 COPY --from=deps /app/node_modules node_modules
 COPY --from=build /app/apps/api apps/api
+COPY docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
+RUN chmod +x /usr/local/bin/api-entrypoint.sh
 EXPOSE 4000
-CMD ["node","apps/api/dist/server.js"]
+CMD ["api-entrypoint.sh"]
