@@ -1,0 +1,1 @@
+export default function Profile(){ return <main className="mx-auto max-w-4xl px-4 py-8"><section className="glass rounded-3xl p-8"><div className="h-24 w-24 rounded-full bg-roseGold"/><h1 className="mt-4 text-3xl font-bold">Guest Profile</h1><p className="text-stone-500">Avatar, display name, uploads, liked photos, comments, and password settings.</p></section></main> }
