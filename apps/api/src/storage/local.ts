@@ -1,0 +1,4 @@
+import fs from 'node:fs/promises'; import path from 'node:path'; import crypto from 'node:crypto'; import { env } from '../common/env.js';
+export interface StorageProvider { save(buffer:Buffer, ext:string):Promise<{key:string; checksum:string}>; read(key:string):Promise<Buffer>; delete(key:string):Promise<void>; }
+export class LocalStorageProvider implements StorageProvider { async save(buffer:Buffer, ext:string){ await fs.mkdir(env.STORAGE_DIR,{recursive:true}); const checksum=crypto.createHash('sha256').update(buffer).digest('hex'); const key=`${checksum}${ext}`; await fs.writeFile(path.join(env.STORAGE_DIR,key),buffer,{flag:'wx'}).catch(async e=>{ if(e.code!=='EEXIST') throw e; }); return {key,checksum}; } read(key:string){ return fs.readFile(path.join(env.STORAGE_DIR,key)); } delete(key:string){ return fs.unlink(path.join(env.STORAGE_DIR,key)); } }
+export const storage = new LocalStorageProvider();
