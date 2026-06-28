@@ -1,0 +1,2 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+:root{color-scheme:light} .dark{color-scheme:dark} body{ @apply bg-stone-50 text-stone-950 dark:bg-neutral-950 dark:text-stone-50; } .glass{ @apply border border-white/30 bg-white/60 shadow-glow backdrop-blur-2xl dark:border-white/10 dark:bg-white/10; }

@@ -1,0 +1,14 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+enum Role { ADMIN USER }
+enum MediaType { IMAGE VIDEO }
+enum UploadStatus { PENDING PROCESSING READY FAILED REJECTED }
+model User { id String @id @default(cuid()) username String @unique passwordHash String role Role @default(USER) displayName String avatarUrl String? disabled Boolean @default(false) createdAt DateTime @default(now()) media Media[] likes Like[] comments Comment[] notifications Notification[] }
+model Media { id String @id @default(cuid()) filename String originalName String mimeType String type MediaType size BigInt width Int? height Int? duration Float? checksum String @unique storageKey String thumbnailKey String? status UploadStatus @default(PROCESSING) views Int @default(0) downloads Int @default(0) uploaderId String uploader User @relation(fields:[uploaderId], references:[id]) albumId String? album Album? @relation(fields:[albumId], references:[id]) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt likes Like[] comments Comment[] tags Tag[] }
+model Album { id String @id @default(cuid()) title String @unique description String? coverMediaId String? createdAt DateTime @default(now()) media Media[] }
+model Like { userId String mediaId String createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id]) media Media @relation(fields:[mediaId], references:[id]) @@id([userId, mediaId]) }
+model Comment { id String @id @default(cuid()) body String userId String mediaId String createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id]) media Media @relation(fields:[mediaId], references:[id]) }
+model Tag { id String @id @default(cuid()) name String @unique media Media[] }
+model Notification { id String @id @default(cuid()) userId String title String body String read Boolean @default(false) createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id]) }
+model ActivityLog { id String @id @default(cuid()) actorId String? action String target String? ip String? createdAt DateTime @default(now()) }
+model Setting { key String @id value String updatedAt DateTime @updatedAt }
